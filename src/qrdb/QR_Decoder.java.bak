@@ -1,0 +1,77 @@
+import ij.ImagePlus;
+import ij.gui.GenericDialog;
+import ij.plugin.filter.PlugInFilter;
+import ij.process.ImageProcessor;
+import ij.text.TextWindow;
+
+import java.awt.image.BufferedImage;
+import java.util.Hashtable;
+
+import com.google.zxing.BinaryBitmap;
+import com.google.zxing.ChecksumException;
+import com.google.zxing.DecodeHintType;
+import com.google.zxing.FormatException;
+import com.google.zxing.LuminanceSource;
+import com.google.zxing.NotFoundException;
+import com.google.zxing.Reader;
+import com.google.zxing.Result;
+import com.google.zxing.client.j2se.BufferedImageLuminanceSource;
+import com.google.zxing.common.HybridBinarizer;
+import com.google.zxing.qrcode.QRCodeReader;
+
+/**
+ * QR_Decoder.java
+ * 
+ * Decodes the QR Code in an 8-bit grayscale image 
+ *
+ * @author  Elliott D. Slaughter
+ *          Stanford University, USA
+ *          elliottslaughter@gmail.com
+ *          http://elliottslaughter.com/
+ * @version 1.0
+ * @since   July, 31, 2011
+ * 
+ * ImageJ macro use syntax: run("QR Decoder", "error=FAILED");
+ * This will display the error= argument if it fails to decode.
+ * Otherwise the decoded information will be displayed.
+ * 
+ * Based upon the ZXing open-source, multi-format 1D/2D barcode image processing library.
+ * http://code.google.com/p/zxing/
+ * 
+ */
+
+public class QR_Decoder implements PlugInFilter {
+
+	public int setup(String arg, ImagePlus image) {
+		return DOES_8G | NO_CHANGES;
+	}
+
+	public void run(ImageProcessor ip) {
+		GenericDialog gd = new GenericDialog("QR Decoder Settings");
+		gd.addStringField("Error Results In: ", "FAILED");
+		gd.showDialog();
+		if (gd.wasCanceled()) {
+			return;
+		}
+		String defaultResultText = gd.getNextString();
+
+		Reader reader = new QRCodeReader();
+		BufferedImage myimg = ip.getBufferedImage();
+		LuminanceSource source = new BufferedImageLuminanceSource(myimg);
+		BinaryBitmap bitmap = new BinaryBitmap(new HybridBinarizer(source));
+		String resultText = defaultResultText;
+		try {
+			Hashtable<DecodeHintType, Object> hints = new Hashtable<DecodeHintType, Object>();
+			hints.put(DecodeHintType.TRY_HARDER, Boolean.TRUE);
+			Result result = reader.decode(bitmap, hints);
+			resultText = result.getText();
+			// On errors just return the default result.
+		} catch (NotFoundException e) {
+		} catch (ChecksumException e) {
+		} catch (FormatException e) {
+		}
+
+		new TextWindow("QR Code", resultText, 12 * resultText.length(), 150);
+	}
+
+}
